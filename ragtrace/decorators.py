@@ -86,11 +86,13 @@ def _async_wrapper(func, *, config, output, semantic):
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
                     None,
-                    _post_process,
+                    functools.partial(
+                        _post_process,
+                        config=config,
+                        output=output,
+                        semantic=semantic,
+                    ),
                     session,
-                    config,
-                    output,
-                    semantic,
                 )
 
         return result

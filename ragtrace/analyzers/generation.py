@@ -33,9 +33,8 @@ def analyze_generation(span: GenerationSpan, config: TracerConfig) -> None:
     # LLMs hedge when they're uncertain — which often means they're
     # not using the context and falling back to general knowledge
     hedging_found = [p for p in _HEDGING_PHRASES if p in response_lower]
-    hedging_ratio = len(hedging_found) / len(_HEDGING_PHRASES)
 
-    if hedging_ratio > config.hedging_threshold:
+    if hedging_found:
         span.diagnosis.append(
             f"Hedging language detected ({len(hedging_found)} phrases: "
             f"{', '.join(repr(p) for p in hedging_found[:3])}{'...' if len(hedging_found) > 3 else ''}). "
