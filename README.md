@@ -1,4 +1,7 @@
 # ragtrace
+
+[![CI](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yml/badge.svg)](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yml)
+
 **A lightweight debugger for RAG pipelines.**
 
 When a RAG pipeline gives a wrong answer, you have no idea why. Was it retrieval? Did
@@ -23,7 +26,7 @@ Qdrant, anything.
 ## How it works
 
 1. `@trace` wraps your function and creates a `TraceSession`
-2. Session ID is stored in a `contextvars.ContextVar` — propagates correctly
+2. Session ID is stored in a `contextvars.ContextVar` propagates correctly
    through both sync and async code
 3. `log_retrieval()` and `log_generation()` read the `ContextVar` and append
    spans to the active session
