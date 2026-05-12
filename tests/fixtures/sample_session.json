@@ -1,0 +1,43 @@
+{
+    "session_id": "abc12345",
+    "query": "What was NEPSE's highest index value in 2023?",
+    "total_latency_ms": 2469.3,
+    "retrieval_spans": [
+        {
+            "query": "What was NEPSE's highest index value in 2023?",
+            "chunks": [
+                "NEPSE reached its all-time high of 3,198.60 points on August 12, 2021.",
+                "The Nepal Stock Exchange index saw significant volatility throughout 2023.",
+                "Trading volumes on NEPSE increased by 34% in the third quarter of 2023.",
+                "Market capitalisation of NEPSE stood at NPR 3.2 trillion in December 2023.",
+                "Foreign investment in Nepal's capital markets remains restricted by regulation."
+            ],
+            "scores": [
+                0.81,
+                0.79,
+                0.45,
+                0.43,
+                0.41
+            ],
+            "k_requested": 5,
+            "k_returned": 5,
+            "latency_ms": 128.1,
+            "diagnosis": [
+                "3 of 5 chunks scored below 0.5 — low-relevance padding detected. Consider reducing k or raising your retriever's min_score threshold."
+            ]
+        }
+    ],
+    "generation_spans": [
+        {
+            "prompt": "Answer the question using only the context below.\n\nContext:\nNEPSE reached its all-time high of 3,198.60 points on August 12, 2021.\n\nThe Nepal Stock Exchange index saw significant volatility throughout 2023.\n\nTrading volumes on NEPSE increased by 34% in the third quarter of 2023.\n\nMarket capitalisation of NEPSE stood at NPR 3.2 trillion in December 2023.\n\nForeign investment in Nepal's capital markets remains restricted by regulation.\n\nQuestion: What was NEPSE's highest index value in 2023?\n\nAnswer:",
+            "response": "Based on the provided context, NEPSE reached its all-time high of 3,198.60 points on August 12, 2021, not specifically in 2023. The context mentions significant volatility throughout 2023 but does not state the highest index value for that specific year.",
+            "model": "llama3.2",
+            "prompt_tokens": 847,
+            "response_tokens": 124,
+            "latency_ms": 2341.2,
+            "diagnosis": [
+                "Response is most similar to chunk #2, not chunk #1. Possible ranking issue — highest-scored chunk may not be the most relevant. Consider reranking before generation."
+            ]
+        }
+    ]
+}

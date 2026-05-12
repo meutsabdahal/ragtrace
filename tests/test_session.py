@@ -1,5 +1,7 @@
 import pytest
 from ragtrace.session import RetrievalSpan, GenerationSpan, TraceSession
+import json
+from pathlib import Path
 
 
 def test_retrieval_span_score_length_mismatch():
@@ -38,3 +40,12 @@ def test_trace_session_has_retrieval():
         )
     )
     assert session.has_retrieval
+
+
+def test_fixture_loads_correctly():
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures/sample_session.json").read_text()
+    )
+    assert fixture["session_id"] == "abc12345"
+    assert len(fixture["retrieval_spans"][0]["chunks"]) == 5
+    assert len(fixture["retrieval_spans"][0]["scores"]) == 5
