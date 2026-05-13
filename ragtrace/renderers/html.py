@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from dataclasses import asdict
+from html import escape as html_escape
 from ragtrace.session import TraceSession
 
 
@@ -37,13 +37,15 @@ def _session_to_dict(session: TraceSession) -> dict:
 
 
 def render_html(session: TraceSession) -> str:
-    data = json.dumps(_session_to_dict(session), indent=2)
+    data = json.dumps(_session_to_dict(session), indent=2).replace("<", "\\u003c")
+    title = html_escape(session.query[:60], quote=True)
+    query = html_escape(session.query, quote=True)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>RAG Trace — {session.query[:60]}</title>
+<title>RAG Trace — {title}</title>
 <style>
   body{{font-family:system-ui,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;color:#1a1a1a;background:#fff}}
   h1{{font-size:18px;font-weight:600}}
@@ -66,7 +68,7 @@ def render_html(session: TraceSession) -> str:
 </head>
 <body>
 <h1>RAG Trace</h1>
-<div class="query"><strong>Query:</strong> {session.query}</div>
+<div class="query"><strong>Query:</strong> {query}</div>
 <div id="root"></div>
 <script>
 const data = {data};
@@ -83,48 +85,87 @@ function score_signal(s) {{
   return '✗';
 }}
 
+function createElement(tag, className, text) {{
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}}
+
+function appendText(element, text) {{
+  element.appendChild(document.createTextNode(text));
+}}
+
+function appendDiagnosis(section, diagnosis) {{
+  const diagnosisContainer = createElement('div', 'diagnosis');
+  diagnosis.forEach(d => {{
+    diagnosisContainer.appendChild(
+      createElement('div', d.includes('healthy') ? 'ok' : 'warn', d)
+    );
+  }});
+  section.appendChild(diagnosisContainer);
+}}
+
 const root = document.getElementById('root');
 
 data.retrieval_spans.forEach((span, i) => {{
-  const sec = document.createElement('div');
-  sec.className = 'section';
-  sec.innerHTML = `
-    <div class="section-header">
-      Retrieval ${{i + 1}}
-      <span class="latency">${{span.latency_ms}}ms · k=${{span.k_returned}}/${{span.k_requested}}</span>
-    </div>
-    <table>
-      <tr><th>Chunk</th><th>Score</th><th></th></tr>
-      ${{span.chunks.map((c, j) => `
-        <tr>
-          <td>${{c.substring(0, 120)}}${{c.length > 120 ? '...' : ''}}</td>
-          <td class="${{score_class(span.scores[j])}}">${{span.scores[j].toFixed(2)}}</td>
-          <td class="${{score_class(span.scores[j])}}">${{score_signal(span.scores[j])}}</td>
-        </tr>
-      `).join('')}}
-    </table>
-    <div class="diagnosis">
-      ${{span.diagnosis.map(d => `<div class="${{d.includes('healthy') ? 'ok' : 'warn'}}">${{d}}</div>`).join('')}}
-    </div>
-  `;
-  root.appendChild(sec);
+  const section = createElement('div', 'section');
+  const header = createElement('div', 'section-header');
+  appendText(header, `Retrieval ${{i + 1}}`);
+  header.appendChild(
+    createElement(
+      'span',
+      'latency',
+      `${{span.latency_ms}}ms · k=${{span.k_returned}}/${{span.k_requested}}`
+    )
+  );
+  section.appendChild(header);
+
+  const table = document.createElement('table');
+  const tableHeader = document.createElement('tr');
+  ['Chunk', 'Score', ''].forEach(label => {{
+    const th = document.createElement('th');
+    th.textContent = label;
+    tableHeader.appendChild(th);
+  }});
+  table.appendChild(tableHeader);
+
+  span.chunks.forEach((chunk, j) => {{
+    const row = document.createElement('tr');
+    const chunkCell = document.createElement('td');
+    chunkCell.textContent = `${{chunk.substring(0, 120)}}${{chunk.length > 120 ? '...' : ''}}`;
+    row.appendChild(chunkCell);
+
+    const scoreCell = createElement('td', score_class(span.scores[j]), span.scores[j].toFixed(2));
+    const signalCell = createElement('td', score_class(span.scores[j]), score_signal(span.scores[j]));
+    row.appendChild(scoreCell);
+    row.appendChild(signalCell);
+    table.appendChild(row);
+  }});
+
+  section.appendChild(table);
+  appendDiagnosis(section, span.diagnosis);
+  root.appendChild(section);
 }});
 
 data.generation_spans.forEach((span, i) => {{
-  const sec = document.createElement('div');
-  sec.className = 'section';
-  sec.innerHTML = `
-    <div class="section-header">
-      Generation ${{i + 1}}
-      <span class="latency">${{span.latency_ms}}ms · model=${{span.model}}</span>
-    </div>
-    <div class="meta">Prompt tokens: ${{span.prompt_tokens}} · Response tokens: ${{span.response_tokens}}</div>
-    <div class="response">${{span.response}}</div>
-    <div class="diagnosis">
-      ${{span.diagnosis.map(d => `<div class="${{d.includes('healthy') ? 'ok' : 'warn'}}">${{d}}</div>`).join('')}}
-    </div>
-  `;
-  root.appendChild(sec);
+  const section = createElement('div', 'section');
+  const header = createElement('div', 'section-header');
+  appendText(header, `Generation ${{i + 1}}`);
+  header.appendChild(
+    createElement('span', 'latency', `${{span.latency_ms}}ms · model=${{span.model}}`)
+  );
+  section.appendChild(header);
+  section.appendChild(
+    createElement(
+      'div',
+      'meta',
+      `Prompt tokens: ${{span.prompt_tokens}} · Response tokens: ${{span.response_tokens}}`
+    )
+  );
+  section.appendChild(createElement('div', 'response', span.response));
+  appendDiagnosis(section, span.diagnosis);
+  root.appendChild(section);
 }});
 
 const footer = document.createElement('div');

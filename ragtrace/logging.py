@@ -1,5 +1,4 @@
 from __future__ import annotations
-import time
 from typing import Optional
 from ragtrace.collector import get_collector
 from ragtrace.session import RetrievalSpan, GenerationSpan
@@ -20,8 +19,6 @@ def log_retrieval(
         scores:      similarity scores, one per chunk (higher = more relevant)
         k_requested: how many results you asked for (defaults to len(chunks))
     """
-    from typing import Optional  # local import to avoid circular
-
     collector = get_collector()
     session = collector.get_current_session()
 
@@ -38,6 +35,7 @@ def log_retrieval(
         k_requested=k_requested if k_requested is not None else len(chunks),
         k_returned=len(chunks),
     )
+    span.latency_ms = session.record_span_latency()
     session.add_retrieval_span(span)
 
 
@@ -71,4 +69,5 @@ def log_generation(
         prompt_tokens=prompt_tokens,
         response_tokens=response_tokens,
     )
+    span.latency_ms = session.record_span_latency()
     session.add_generation_span(span)

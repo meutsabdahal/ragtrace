@@ -1,5 +1,5 @@
 from __future__ import annotations
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import Optional
 from ragtrace.session import TraceSession
 
@@ -18,11 +18,14 @@ class TraceCollector:
 
     def __init__(self):
         self._sessions: dict[str, TraceSession] = {}
+        self._session_tokens: dict[str, Token[Optional[str]]] = {}
 
     def start_session(self, query: str) -> TraceSession:
         session = TraceSession(query=query)
         self._sessions[session.session_id] = session
-        _current_session_id.set(session.session_id)
+        self._session_tokens[session.session_id] = _current_session_id.set(
+            session.session_id
+        )
         return session
 
     def get_current_session(self) -> Optional[TraceSession]:
@@ -33,14 +36,19 @@ class TraceCollector:
 
     def end_session(self, session_id: str) -> Optional[TraceSession]:
         session = self._sessions.pop(session_id, None)
+        token = self._session_tokens.pop(session_id, None)
         if session:
             session.finalise()
-        _current_session_id.set(None)
+        if token is not None:
+            _current_session_id.reset(token)
+        else:
+            _current_session_id.set(None)
         return session
 
     def clear(self) -> None:
         """Used in tests to reset state between runs."""
         self._sessions.clear()
+        self._session_tokens.clear()
         _current_session_id.set(None)
 
 

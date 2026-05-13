@@ -53,13 +53,23 @@ class TraceSession:
     retrieval_spans: list[RetrievalSpan] = field(default_factory=list)
     generation_spans: list[GenerationSpan] = field(default_factory=list)
     total_latency_ms: float = 0.0
-    _start_time: float = field(default_factory=time.perf_counter, repr=False)
+    _start_time: float = field(default_factory=lambda: time.perf_counter(), repr=False)
+    _last_event_time: float = field(init=False, repr=False)
+
+    def __post_init__(self):
+        self._last_event_time = self._start_time
 
     def add_retrieval_span(self, span: RetrievalSpan) -> None:
         self.retrieval_spans.append(span)
 
     def add_generation_span(self, span: GenerationSpan) -> None:
         self.generation_spans.append(span)
+
+    def record_span_latency(self) -> float:
+        now = time.perf_counter()
+        latency_ms = (now - self._last_event_time) * 1000
+        self._last_event_time = now
+        return latency_ms
 
     def finalise(self) -> None:
         self.total_latency_ms = (time.perf_counter() - self._start_time) * 1000
