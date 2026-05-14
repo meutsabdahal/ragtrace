@@ -99,3 +99,20 @@ def test_span_latencies_are_recorded(monkeypatch):
     assert session is not None
     assert session.retrieval_spans[0].latency_ms == pytest.approx(250.0)
     assert session.generation_spans[0].latency_ms == pytest.approx(1750.0)
+
+
+def test_multiple_retrieval_logs_link_to_one_generation():
+    @trace(semantic=False)
+    def pipeline(query: str) -> object:
+        log_retrieval(query=query, chunks=["chunk 1"], scores=[0.9])
+        log_retrieval(query=query, chunks=["chunk 2"], scores=[0.8])
+        log_generation(prompt="prompt", response="response", model="test")
+        return get_collector().get_current_session()
+
+    session = pipeline("test query")
+
+    assert session is not None
+    assert session.generation_spans[0].linked_retrieval_indices == [0, 1]
+    assert session.retrieval_spans[0].linked_generation_indices == [2]
+    assert session.retrieval_spans[1].linked_generation_indices == [2]
+    assert session.analysis_report["context_reports"][0]["multi_retrieval"] is True

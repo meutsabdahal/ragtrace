@@ -9,8 +9,11 @@ def _session_to_dict(session: TraceSession) -> dict:
         "session_id": session.session_id,
         "query": session.query,
         "total_latency_ms": round(session.total_latency_ms, 1),
+        "analysis_report": session.analysis_report,
         "retrieval_spans": [
             {
+                "event_index": s.event_index,
+                "linked_generation_indices": s.linked_generation_indices,
                 "query": s.query,
                 "chunks": s.chunks,
                 "scores": [round(sc, 4) for sc in s.scores],
@@ -18,11 +21,14 @@ def _session_to_dict(session: TraceSession) -> dict:
                 "k_returned": s.k_returned,
                 "latency_ms": round(s.latency_ms, 1),
                 "diagnosis": s.diagnosis,
+                "analysis_notes": s.analysis_notes,
             }
             for s in session.retrieval_spans
         ],
         "generation_spans": [
             {
+                "event_index": s.event_index,
+                "linked_retrieval_indices": s.linked_retrieval_indices,
                 "prompt": s.prompt,
                 "response": s.response,
                 "model": s.model,
@@ -30,6 +36,7 @@ def _session_to_dict(session: TraceSession) -> dict:
                 "response_tokens": s.response_tokens,
                 "latency_ms": round(s.latency_ms, 1),
                 "diagnosis": s.diagnosis,
+                "analysis_notes": s.analysis_notes,
             }
             for s in session.generation_spans
         ],
@@ -152,8 +159,18 @@ data.generation_spans.forEach((span, i) => {{
   const section = createElement('div', 'section');
   const header = createElement('div', 'section-header');
   appendText(header, `Generation ${{i + 1}}`);
+  const linkedRetrievalCount = span.linked_retrieval_indices.length;
+  const linkedRetrievalLabel = linkedRetrievalCount > 1
+    ? ` · multi-hop=${{linkedRetrievalCount}} retrievals`
+    : linkedRetrievalCount === 1
+      ? ' · retrieval-linked'
+      : '';
   header.appendChild(
-    createElement('span', 'latency', `${{span.latency_ms}}ms · model=${{span.model}}`)
+    createElement(
+      'span',
+      'latency',
+      `${{span.latency_ms}}ms · model=${{span.model}}${{linkedRetrievalLabel}}`
+    )
   );
   section.appendChild(header);
   section.appendChild(
@@ -163,6 +180,15 @@ data.generation_spans.forEach((span, i) => {{
       `Prompt tokens: ${{span.prompt_tokens}} · Response tokens: ${{span.response_tokens}}`
     )
   );
+  if (span.linked_retrieval_indices.length) {{
+    section.appendChild(
+      createElement(
+        'div',
+        'meta',
+        `Linked retrievals: ${{linkedRetrievalCount}}${{linkedRetrievalCount > 1 ? ' (multi-hop)' : ''}}`
+      )
+    );
+  }}
   section.appendChild(createElement('div', 'response', span.response));
   appendDiagnosis(section, span.diagnosis);
   root.appendChild(section);

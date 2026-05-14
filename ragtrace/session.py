@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 import time
 import uuid
 
@@ -14,6 +14,9 @@ class RetrievalSpan:
     k_returned: int
     latency_ms: float = 0.0
     diagnosis: list[str] = field(default_factory=list)
+    analysis_notes: list[dict[str, Any]] = field(default_factory=list)
+    event_index: int = -1
+    linked_generation_indices: list[int] = field(default_factory=list)
 
     def __post_init__(self):
         # normalise scores — some vector stores return distances
@@ -36,6 +39,9 @@ class GenerationSpan:
     response_tokens: int = 0
     latency_ms: float = 0.0
     diagnosis: list[str] = field(default_factory=list)
+    analysis_notes: list[dict[str, Any]] = field(default_factory=list)
+    event_index: int = -1
+    linked_retrieval_indices: list[int] = field(default_factory=list)
 
     def __post_init__(self):
         # estimate token counts if not provided
@@ -52,17 +58,37 @@ class TraceSession:
     session_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     retrieval_spans: list[RetrievalSpan] = field(default_factory=list)
     generation_spans: list[GenerationSpan] = field(default_factory=list)
+    analysis_report: dict[str, Any] = field(default_factory=dict)
     total_latency_ms: float = 0.0
     _start_time: float = field(default_factory=lambda: time.perf_counter(), repr=False)
     _last_event_time: float = field(init=False, repr=False)
+    _event_counter: int = field(default=0, init=False, repr=False)
+    _pending_retrieval_indices: list[int] = field(
+        default_factory=list, init=False, repr=False
+    )
+    _retrieval_spans_by_event_index: dict[int, RetrievalSpan] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self):
         self._last_event_time = self._start_time
 
     def add_retrieval_span(self, span: RetrievalSpan) -> None:
+        span.event_index = self._event_counter
+        self._event_counter += 1
         self.retrieval_spans.append(span)
+        self._retrieval_spans_by_event_index[span.event_index] = span
+        self._pending_retrieval_indices.append(span.event_index)
 
     def add_generation_span(self, span: GenerationSpan) -> None:
+        span.event_index = self._event_counter
+        self._event_counter += 1
+        span.linked_retrieval_indices = list(self._pending_retrieval_indices)
+        for retrieval_index in span.linked_retrieval_indices:
+            retrieval_span = self._retrieval_spans_by_event_index.get(retrieval_index)
+            if retrieval_span is not None:
+                retrieval_span.linked_generation_indices.append(span.event_index)
+        self._pending_retrieval_indices.clear()
         self.generation_spans.append(span)
 
     def record_span_latency(self) -> float:

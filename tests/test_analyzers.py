@@ -3,6 +3,7 @@ from ragtrace.session import RetrievalSpan, GenerationSpan
 from ragtrace.config import TracerConfig
 from ragtrace.analyzers.retrieval import analyze_retrieval
 from ragtrace.analyzers.generation import analyze_generation
+from ragtrace.analyzers.context import analyze_context
 
 
 def make_retrieval_span(scores):
@@ -63,3 +64,28 @@ def test_generation_healthy_response():
     )
     analyze_generation(span, config=TracerConfig())
     assert any("healthy" in d for d in span.diagnosis)
+
+
+def test_context_analysis_flags_multi_hop_chains_without_semantic_model():
+    retrieval_one = make_retrieval_span([0.9, 0.8])
+    retrieval_two = make_retrieval_span([0.85, 0.75])
+    retrieval_one.event_index = 0
+    retrieval_two.event_index = 1
+
+    generation = GenerationSpan(
+        prompt="prompt",
+        response="The answer depends on both passes.",
+        model="test",
+    )
+    generation.event_index = 2
+
+    report = analyze_context(
+        [retrieval_one, retrieval_two],
+        generation,
+        config=TracerConfig(semantic=False),
+    )
+
+    assert report["multi_retrieval"] is True
+    assert report["retrieval_event_indices"] == [0, 1]
+    assert any("Multi-hop retrieval signal" in d for d in generation.diagnosis)
+    assert generation.analysis_notes[0]["code"] == "multi_retrieval"

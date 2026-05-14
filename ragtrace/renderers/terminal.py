@@ -68,10 +68,16 @@ def render_retrieval(span: RetrievalSpan, config: TracerConfig) -> None:
 
 
 def render_generation(span: GenerationSpan, config: TracerConfig) -> None:
+    linked_retrieval_count = len(span.linked_retrieval_indices)
+    linked_label = (
+        f"  multi-hop={linked_retrieval_count} retrievals"
+        if linked_retrieval_count > 1
+        else "  retrieval-linked" if linked_retrieval_count == 1 else ""
+    )
     console.print(
         f" [bold]Generation[/bold]  "
         f"[dim]{span.latency_ms:.0f}ms  "
-        f"model={span.model}[/dim]"
+        f"model={span.model}{linked_label}[/dim]"
     )
     console.print(
         f" [dim]Prompt tokens: {span.prompt_tokens}  "
