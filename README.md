@@ -51,7 +51,21 @@ Most RAG debugging looks like this: print retrieved chunks to stdout, read them 
 pip install ragtrace
 ```
 
-Requires Python 3.10+. On first run, `ragtrace` downloads a small embedding model (~80MB) for context analysis. One-time download.
+Requires Python 3.10+.
+
+Semantic analysis dependencies are optional to keep the base install lightweight:
+
+```bash
+pip install "ragtrace[semantic]"
+```
+
+On first semantic run, `ragtrace` downloads a small embedding model (~80MB). One-time download.
+
+Example dependencies are also optional:
+
+```bash
+pip install "ragtrace[examples]"
+```
 
 ---
 
@@ -220,7 +234,7 @@ Similarity score thresholds assume higher = better relevance. Convert distances 
 ```bash
 git clone https://github.com/meutsabdahal/ragtrace
 cd ragtrace
-uv sync
+uv sync --group dev
 uv run pytest tests/ -v
 ```
 
