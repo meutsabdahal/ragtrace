@@ -105,7 +105,9 @@ def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
     def _raise_missing():
         raise RuntimeError("missing semantic extras")
 
-    monkeypatch.setattr("ragtrace.analyzers.context._get_semantic_resources", _raise_missing)
+    monkeypatch.setattr(
+        "ragtrace.analyzers.context._get_semantic_resources", _raise_missing
+    )
 
     report = analyze_context(
         retrieval,
@@ -113,5 +115,10 @@ def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
         config=TracerConfig(semantic=True),
     )
 
-    assert any(note["code"] == "semantic_dependencies_missing" for note in report["findings"])
-    assert any(note["code"] == "semantic_dependencies_missing" for note in generation.analysis_notes)
+    assert any(
+        note["code"] == "semantic_dependencies_missing" for note in report["findings"]
+    )
+    assert any(
+        note["code"] == "semantic_dependencies_missing"
+        for note in generation.analysis_notes
+    )

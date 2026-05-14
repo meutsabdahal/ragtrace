@@ -5,6 +5,7 @@ from typing import Any
 from ragtrace.session import RetrievalSpan, GenerationSpan
 from ragtrace.config import TracerConfig
 
+
 @lru_cache(maxsize=1)
 def _get_semantic_resources():
     """Lazily import semantic dependencies and cache heavy runtime objects."""
