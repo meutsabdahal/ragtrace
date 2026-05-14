@@ -1,26 +1,31 @@
 from __future__ import annotations
+from functools import lru_cache
 from collections.abc import Sequence
 from typing import Any
 from ragtrace.session import RetrievalSpan, GenerationSpan
 from ragtrace.config import TracerConfig
 
-_model = None
-
-
-def _get_embedding_model():
-    global _model
-    if _model is None:
-        from rich.console import Console
+@lru_cache(maxsize=1)
+def _get_semantic_resources():
+    """Lazily import semantic dependencies and cache heavy runtime objects."""
+    try:
         from sentence_transformers import SentenceTransformer
+        from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
+    except ImportError as exc:
+        raise RuntimeError(
+            "Semantic analysis requires optional dependencies. "
+            "Install with: pip install ragtrace[semantic]"
+        ) from exc
 
-        Console().print("[dim]Loading embedding model (first run)...[/dim]")
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
+    from rich.console import Console
+
+    Console().print("[dim]Loading embedding model (first run)...[/dim]")
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    return model, sk_cosine
 
 
 def _cosine_similarity(a, b) -> float:
-    from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
-    import numpy as np
+    _, sk_cosine = _get_semantic_resources()
 
     score = float(sk_cosine([a], [b])[0][0])
     return max(0.0, min(1.0, score))
@@ -82,7 +87,22 @@ def analyze_context(
     if not config.semantic:
         return report
 
-    model = _get_embedding_model()
+    try:
+        model, _ = _get_semantic_resources()
+    except RuntimeError:
+        note = _record_note(
+            generation_span,
+            code="semantic_dependencies_missing",
+            severity="info",
+            message=(
+                "Semantic analysis is enabled but optional semantic dependencies "
+                "are not installed. Falling back to non-semantic analysis."
+            ),
+            install_hint="pip install ragtrace[semantic]",
+        )
+        report["findings"].append(note)
+        return report
+
     response = generation_span.response
     if not response:
         return report

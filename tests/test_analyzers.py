@@ -89,3 +89,29 @@ def test_context_analysis_flags_multi_hop_chains_without_semantic_model():
     assert report["retrieval_event_indices"] == [0, 1]
     assert any("Multi-hop retrieval signal" in d for d in generation.diagnosis)
     assert generation.analysis_notes[0]["code"] == "multi_retrieval"
+
+
+def test_context_analysis_semantic_missing_dependencies_falls_back(monkeypatch):
+    retrieval = make_retrieval_span([0.9, 0.8])
+    retrieval.event_index = 0
+
+    generation = GenerationSpan(
+        prompt="prompt",
+        response="Answer from context.",
+        model="test",
+    )
+    generation.event_index = 1
+
+    def _raise_missing():
+        raise RuntimeError("missing semantic extras")
+
+    monkeypatch.setattr("ragtrace.analyzers.context._get_semantic_resources", _raise_missing)
+
+    report = analyze_context(
+        retrieval,
+        generation,
+        config=TracerConfig(semantic=True),
+    )
+
+    assert any(note["code"] == "semantic_dependencies_missing" for note in report["findings"])
+    assert any(note["code"] == "semantic_dependencies_missing" for note in generation.analysis_notes)
