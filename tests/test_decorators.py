@@ -116,3 +116,4 @@ def test_multiple_retrieval_logs_link_to_one_generation():
     assert session.retrieval_spans[0].linked_generation_indices == [2]
     assert session.retrieval_spans[1].linked_generation_indices == [2]
     assert session.analysis_report["context_reports"][0]["multi_retrieval"] is True
+    assert session.analysis_report["trace_mode"] == "non-semantic"

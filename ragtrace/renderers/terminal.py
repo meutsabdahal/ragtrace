@@ -27,6 +27,14 @@ def _score_signal(score: float) -> str:
     return "✗"
 
 
+def _trace_mode_label(config: TracerConfig) -> str:
+    return "semantic" if config.semantic else "non-semantic"
+
+
+def _fold_text(value: str) -> Text:
+    return Text(value, overflow="fold", no_wrap=False)
+
+
 def render_retrieval(span: RetrievalSpan, config: TracerConfig) -> None:
     console.print(
         f" [bold]Retrieval[/bold]  "
@@ -35,19 +43,21 @@ def render_retrieval(span: RetrievalSpan, config: TracerConfig) -> None:
     )
 
     if config.show_chunks:
-        table = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
-        table.add_column("Chunk", style="dim", max_width=config.max_chunk_preview)
+        table = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=True)
+        table.add_column(
+            "Chunk",
+            style="dim",
+            max_width=config.max_chunk_preview,
+            overflow="fold",
+        )
         table.add_column("Score", justify="right", width=6)
         table.add_column("", width=4)
 
         for chunk, score in zip(span.chunks, span.scores):
-            preview = chunk.replace("\n", " ")[: config.max_chunk_preview]
-            if len(chunk) > config.max_chunk_preview:
-                preview += "..."
             color = _score_color(score)
             signal = _score_signal(score)
             table.add_row(
-                preview,
+                _fold_text(chunk),
                 f"[{color}]{score:.2f}[/{color}]",
                 f"[{color}]{signal}[/{color}]",
             )
@@ -85,15 +95,10 @@ def render_generation(span: GenerationSpan, config: TracerConfig) -> None:
     )
 
     if config.show_prompt:
-        preview = span.prompt[:200].replace("\n", " ")
-        if len(span.prompt) > 200:
-            preview += "..."
-        console.print(f" [dim]Prompt: {preview}[/dim]")
+        console.print(Panel(_fold_text(span.prompt), title="Prompt", expand=False))
 
     console.print()
-    console.print(f" [bold]Response:[/bold]")
-    for line in span.response.splitlines():
-        console.print(f"  {line}")
+    console.print(Panel(_fold_text(span.response), title="Response", expand=False))
     console.print()
 
     for diagnosis in span.diagnosis:
@@ -111,9 +116,13 @@ def render_generation(span: GenerationSpan, config: TracerConfig) -> None:
 
 
 def render_session(session: TraceSession, config: TracerConfig) -> None:
-    console.rule(
-        Text(f" Query: {session.query[:80]} ", style="bold"),
-        style="dim",
+    console.print(
+        Panel(
+            _fold_text(session.query),
+            title="Query",
+            subtitle=f"Trace mode: {_trace_mode_label(config)}",
+            expand=False,
+        )
     )
     console.print()
 

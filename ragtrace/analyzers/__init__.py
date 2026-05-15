@@ -11,6 +11,7 @@ from ragtrace.analyzers.generation import analyze_generation
 def run_all_analyzers(session: TraceSession, config: TracerConfig) -> dict[str, Any]:
     report: dict[str, Any] = {
         "session_id": session.session_id,
+        "trace_mode": "semantic" if config.semantic else "non-semantic",
         "retrieval_spans": [],
         "generation_spans": [],
         "context_reports": [],
