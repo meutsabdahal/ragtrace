@@ -9,7 +9,7 @@ def log_retrieval(
     chunks: list[str],
     scores: list[float],
     k_requested: Optional[int] = None,
-) -> None:
+) -> RetrievalSpan | None:
     """
     Call this immediately after your retrieval step.
 
@@ -26,7 +26,7 @@ def log_retrieval(
         # called outside a @trace context — silently no-op
         # this lets users leave log_retrieval in production code
         # without crashing if tracing is disabled
-        return
+        return None
 
     span = RetrievalSpan(
         query=query,
@@ -37,6 +37,7 @@ def log_retrieval(
     )
     span.latency_ms = session.record_span_latency()
     session.add_retrieval_span(span)
+    return span
 
 
 def log_generation(
@@ -45,7 +46,7 @@ def log_generation(
     model: str,
     prompt_tokens: int = 0,
     response_tokens: int = 0,
-) -> None:
+) -> GenerationSpan | None:
     """
     Call this immediately after your generation step.
 
@@ -60,7 +61,7 @@ def log_generation(
     session = collector.get_current_session()
 
     if session is None:
-        return
+        return None
 
     span = GenerationSpan(
         prompt=prompt,
@@ -71,3 +72,32 @@ def log_generation(
     )
     span.latency_ms = session.record_span_latency()
     session.add_generation_span(span)
+    return span
+
+
+def link_retrieval_to_generation(
+    retrieval: RetrievalSpan | int,
+    generation: GenerationSpan | int,
+) -> None:
+    collector = get_collector()
+    session = collector.get_current_session()
+
+    if session is None:
+        return
+
+    retrieval_event_index = (
+        retrieval.event_index if isinstance(retrieval, RetrievalSpan) else retrieval
+    )
+    generation_event_index = (
+        generation.event_index if isinstance(generation, GenerationSpan) else generation
+    )
+
+    if retrieval_event_index < 0 or generation_event_index < 0:
+        raise ValueError(
+            "link_retrieval_to_generation requires logged spans or event indices"
+        )
+
+    session.link_retrieval_to_generation(
+        retrieval_event_index=retrieval_event_index,
+        generation_event_index=generation_event_index,
+    )

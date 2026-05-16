@@ -14,6 +14,7 @@ def trace(
     config: Optional[TracerConfig] = None,
     output: Optional[str] = None,
     semantic: bool = True,
+    render: bool = True,
 ):
     """
     Decorator that instruments a RAG pipeline function.
@@ -33,22 +34,30 @@ def trace(
         # called with arguments: @trace(output="report.html")
         # return a decorator
         def decorator(f):
-            return _make_wrapper(f, config=config, output=output, semantic=semantic)
+            return _make_wrapper(
+                f, config=config, output=output, semantic=semantic, render=render
+            )
 
         return decorator
 
     # called without arguments: @trace
-    return _make_wrapper(func, config=config, output=output, semantic=semantic)
+    return _make_wrapper(
+        func, config=config, output=output, semantic=semantic, render=render
+    )
 
 
-def _make_wrapper(func: Callable, *, config, output, semantic) -> Callable:
+def _make_wrapper(func: Callable, *, config, output, semantic, render) -> Callable:
     """Returns sync or async wrapper depending on the function type."""
     if asyncio.iscoroutinefunction(func):
-        return _async_wrapper(func, config=config, output=output, semantic=semantic)
-    return _sync_wrapper(func, config=config, output=output, semantic=semantic)
+        return _async_wrapper(
+            func, config=config, output=output, semantic=semantic, render=render
+        )
+    return _sync_wrapper(
+        func, config=config, output=output, semantic=semantic, render=render
+    )
 
 
-def _sync_wrapper(func, *, config, output, semantic):
+def _sync_wrapper(func, *, config, output, semantic, render):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # extract query — first positional arg or 'query' kwarg
@@ -62,14 +71,20 @@ def _sync_wrapper(func, *, config, output, semantic):
         finally:
             session = collector.end_session(session.session_id)
             if session:
-                _post_process(session, config=config, output=output, semantic=semantic)
+                _post_process(
+                    session,
+                    config=config,
+                    output=output,
+                    semantic=semantic,
+                    render=render,
+                )
 
         return result
 
     return wrapper
 
 
-def _async_wrapper(func, *, config, output, semantic):
+def _async_wrapper(func, *, config, output, semantic, render):
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
         query = _extract_query(func, args, kwargs)
@@ -91,6 +106,7 @@ def _async_wrapper(func, *, config, output, semantic):
                         config=config,
                         output=output,
                         semantic=semantic,
+                        render=render,
                     ),
                     session,
                 )
@@ -113,7 +129,7 @@ def _extract_query(func: Callable, args: tuple, kwargs: dict) -> str:
     return ""
 
 
-def _post_process(session, *, config, output, semantic) -> None:
+def _post_process(session, *, config, output, semantic, render) -> None:
     """Run analyzers then render. Called after the traced function returns."""
     from ragtrace.analyzers import run_all_analyzers
     from ragtrace.renderers.terminal import render_session
@@ -122,9 +138,10 @@ def _post_process(session, *, config, output, semantic) -> None:
     cfg = config or TracerConfig(semantic=semantic)
     run_all_analyzers(session, config=cfg)
 
-    render_session(session, config=cfg)
+    if render:
+        render_session(session, config=cfg)
 
-    if output:
+    if output and render:
         html = render_html(session)
         with open(output, "w") as f:
             f.write(html)

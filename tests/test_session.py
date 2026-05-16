@@ -77,6 +77,27 @@ def test_trace_session_links_retrievals_to_generation_events():
     assert session.generation_spans[1].linked_retrieval_indices == [2]
 
 
+def test_trace_session_explicit_linking_is_idempotent():
+    session = TraceSession(query="test")
+
+    retrieval = RetrievalSpan(
+        query="test",
+        chunks=["chunk"],
+        scores=[0.8],
+        k_requested=1,
+        k_returned=1,
+    )
+    session.add_retrieval_span(retrieval)
+    generation = GenerationSpan(prompt="prompt", response="response", model="test")
+    session.add_generation_span(generation)
+
+    session.link_retrieval_to_generation(retrieval.event_index, generation.event_index)
+    session.link_retrieval_to_generation(retrieval.event_index, generation.event_index)
+
+    assert retrieval.linked_generation_indices == [1]
+    assert generation.linked_retrieval_indices == [0]
+
+
 def test_fixture_loads_correctly():
     fixture = json.loads(
         (Path(__file__).parent / "fixtures/sample_session.json").read_text()

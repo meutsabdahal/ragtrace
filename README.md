@@ -6,6 +6,9 @@
 
 When a RAG pipeline gives a wrong answer, you have no idea why. `ragtrace` wraps your existing pipeline with one decorator and shows you exactly where it broke retrieval, context ranking, or generation.
 
+> **Score convention:** `ragtrace` assumes higher scores mean more relevant chunks.
+> If your vector store returns distances, convert them to similarities before logging.
+
 ```
 $ python app.py
 
@@ -163,6 +166,23 @@ def answer(query: str) -> str:
     ...
 ```
 
+### Disable rendering for downstream tooling
+
+```python
+from ragtrace import trace, log_retrieval, log_generation, serialize_trace
+
+@trace(render=False)
+def answer(query: str) -> str:
+    docs, scores = retriever.search(query, k=5)
+    log_retrieval(query=query, chunks=docs, scores=scores)
+
+    response = llm.complete(build_prompt(docs, query))
+    log_generation(prompt=build_prompt(docs, query), response=response, model="llama3.2")
+    return response
+```
+
+The analyzers still run and populate `session.analysis_report`; once you have the finalized session object, use `serialize_trace(...)` to hand it to downstream tools.
+
 ---
 
 ## Works with any vector store
@@ -190,6 +210,24 @@ log_retrieval(query=query,
 > **Note on scores:** `ragtrace` assumes higher score = more relevant.
 > If your vector store returns distances (lower = better), convert them
 > before calling `log_retrieval`: `score = 1.0 - distance`.
+
+### Explicit retrieval-generation pairing
+
+If your workflow needs a non-default association, keep the returned span objects and pair them explicitly:
+
+```python
+from ragtrace import trace, log_retrieval, log_generation, link_retrieval_to_generation
+
+@trace(render=False)
+def answer(query: str) -> str:
+    retrieval = log_retrieval(query=query, chunks=["chunk"], scores=[0.9])
+    response = llm.complete(query)
+    generation = log_generation(prompt=query, response=response, model="llama3.2")
+    link_retrieval_to_generation(retrieval, generation)
+    return response
+```
+
+This is useful when a generation should be tied to a specific retrieval step after the fact.
 
 ---
 

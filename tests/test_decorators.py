@@ -1,6 +1,8 @@
+import json
 import pytest
-from ragtrace import trace, log_retrieval, log_generation
+from ragtrace import trace, log_retrieval, log_generation, link_retrieval_to_generation
 from ragtrace.collector import get_collector
+from ragtrace.serialization import serialize_trace
 
 
 def setup_function():
@@ -81,6 +83,57 @@ def test_trace_with_output_arg():
     pipeline("test query")
     assert os.path.exists("/tmp/test_ragtrace_report.html")
     os.remove("/tmp/test_ragtrace_report.html")
+
+
+def test_trace_can_disable_rendering(monkeypatch):
+    render_calls = []
+    analyzer_calls = []
+
+    monkeypatch.setattr(
+        "ragtrace.renderers.terminal.render_session",
+        lambda *args, **kwargs: render_calls.append((args, kwargs)),
+    )
+
+    def fake_run_all_analyzers(session, config):
+        analyzer_calls.append((session.session_id, config.semantic))
+        session.analysis_report = {"trace_mode": "non-semantic"}
+        return session.analysis_report
+
+    monkeypatch.setattr(
+        "ragtrace.analyzers.run_all_analyzers",
+        fake_run_all_analyzers,
+    )
+
+    @trace(render=False, semantic=False)
+    def pipeline(query: str) -> str:
+        log_retrieval(query=query, chunks=["chunk"], scores=[0.9])
+        log_generation(prompt="prompt", response="response", model="test")
+        return "done"
+
+    assert pipeline("test query") == "done"
+    assert analyzer_calls
+    assert render_calls == []
+
+
+def test_explicit_linking_and_serialization():
+    @trace(render=False, semantic=False)
+    def pipeline(query: str):
+        retrieval = log_retrieval(query=query, chunks=["chunk 1"], scores=[0.8])
+        generation = log_generation(prompt="prompt", response="response", model="test")
+        assert retrieval is not None
+        assert generation is not None
+        link_retrieval_to_generation(retrieval, generation)
+        session = get_collector().get_current_session()
+        assert session is not None
+        return session
+
+    session = pipeline("test query")
+    trace_json = serialize_trace(session)
+    payload = json.loads(trace_json)
+
+    assert payload["retrieval_spans"][0]["linked_generation_indices"] == [1]
+    assert payload["generation_spans"][0]["linked_retrieval_indices"] == [0]
+    assert "analysis_report" in payload
 
 
 def test_span_latencies_are_recorded(monkeypatch):

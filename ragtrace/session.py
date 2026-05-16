@@ -69,6 +69,9 @@ class TraceSession:
     _retrieval_spans_by_event_index: dict[int, RetrievalSpan] = field(
         default_factory=dict, init=False, repr=False
     )
+    _generation_spans_by_event_index: dict[int, GenerationSpan] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self):
         self._last_event_time = self._start_time
@@ -90,6 +93,27 @@ class TraceSession:
                 retrieval_span.linked_generation_indices.append(span.event_index)
         self._pending_retrieval_indices.clear()
         self.generation_spans.append(span)
+        self._generation_spans_by_event_index[span.event_index] = span
+
+    def link_retrieval_to_generation(
+        self, retrieval_event_index: int, generation_event_index: int
+    ) -> None:
+        retrieval_span = self._retrieval_spans_by_event_index.get(retrieval_event_index)
+        if retrieval_span is None:
+            raise ValueError(f"Unknown retrieval event index: {retrieval_event_index}")
+
+        generation_span = self._generation_spans_by_event_index.get(
+            generation_event_index
+        )
+        if generation_span is None:
+            raise ValueError(
+                f"Unknown generation event index: {generation_event_index}"
+            )
+
+        if retrieval_event_index not in generation_span.linked_retrieval_indices:
+            generation_span.linked_retrieval_indices.append(retrieval_event_index)
+        if generation_event_index not in retrieval_span.linked_generation_indices:
+            retrieval_span.linked_generation_indices.append(generation_event_index)
 
     def record_span_latency(self) -> float:
         now = time.perf_counter()

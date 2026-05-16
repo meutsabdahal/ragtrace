@@ -2,49 +2,11 @@ from __future__ import annotations
 import json
 from html import escape as html_escape
 from ragtrace.session import TraceSession
-
-
-def _session_to_dict(session: TraceSession) -> dict:
-    return {
-        "session_id": session.session_id,
-        "query": session.query,
-        "total_latency_ms": round(session.total_latency_ms, 1),
-        "analysis_report": session.analysis_report,
-        "retrieval_spans": [
-            {
-                "event_index": s.event_index,
-                "linked_generation_indices": s.linked_generation_indices,
-                "query": s.query,
-                "chunks": s.chunks,
-                "scores": [round(sc, 4) for sc in s.scores],
-                "k_requested": s.k_requested,
-                "k_returned": s.k_returned,
-                "latency_ms": round(s.latency_ms, 1),
-                "diagnosis": s.diagnosis,
-                "analysis_notes": s.analysis_notes,
-            }
-            for s in session.retrieval_spans
-        ],
-        "generation_spans": [
-            {
-                "event_index": s.event_index,
-                "linked_retrieval_indices": s.linked_retrieval_indices,
-                "prompt": s.prompt,
-                "response": s.response,
-                "model": s.model,
-                "prompt_tokens": s.prompt_tokens,
-                "response_tokens": s.response_tokens,
-                "latency_ms": round(s.latency_ms, 1),
-                "diagnosis": s.diagnosis,
-                "analysis_notes": s.analysis_notes,
-            }
-            for s in session.generation_spans
-        ],
-    }
+from ragtrace.serialization import trace_to_dict
 
 
 def render_html(session: TraceSession) -> str:
-    data = json.dumps(_session_to_dict(session), indent=2).replace("<", "\\u003c")
+    data = json.dumps(trace_to_dict(session), indent=2).replace("<", "\\u003c")
     title = html_escape(session.query[:60], quote=True)
     query = html_escape(session.query, quote=True)
     section_count = len(session.retrieval_spans) + len(session.generation_spans)
