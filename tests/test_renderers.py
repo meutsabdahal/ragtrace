@@ -53,7 +53,7 @@ def test_render_html_includes_trace_mode_and_collapsible_sections():
 
     assert '"trace_mode": "non-semantic"' in html
     assert "document.createElement('details')" in html
-    assert 'if (!true) section.open = true;' in html
+    assert "if (!true) section.open = true;" in html
 
 
 def test_terminal_render_session_wraps_long_text_and_shows_mode(monkeypatch):

@@ -1,6 +1,6 @@
 # ragtrace
 
-[![CI](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yml/badge.svg)](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yml)
+[![CI](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yaml/badge.svg)](https://github.com/meutsabdahal/ragtrace/actions/workflows/ci.yaml)
 
 **A lightweight debugger for RAG pipelines.**
 
