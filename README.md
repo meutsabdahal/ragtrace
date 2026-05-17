@@ -15,26 +15,25 @@ $ python app.py
 ──────────────────────────────────────────────────────────────────
  Query: What was NEPSE's highest index value in 2023?
 ──────────────────────────────────────────────────────────────────
- Retrieval                                                  128ms
+ Retrieval                                                   80ms
  ┌──────────────────────────────────────────┬───────┬──────┐
  │ Chunk                                    │ Score │      │
  ├──────────────────────────────────────────┼───────┼──────┤
- │ NEPSE reached its peak of 3,198...       │ 0.81  │  ✓   │
- │ The index saw significant volatility...  │ 0.79  │  ✓   │
+ │ NEPSE reached its peak of 3,198...       │ 0.89  │  ✓   │
+ │ The index saw significant volatility...  │ 0.82  │  ✓   │
  │ Trading volumes in Q3 2023 were...       │ 0.45  │  ⚠   │
- │ Market capitalisation stood at...        │ 0.43  │  ⚠   │
- │ Foreign investment flows into...         │ 0.41  │  ⚠   │
+ │ Market capitalisation stood at...        │ 0.38  │  ⚠   │
+ │ Foreign investment flows into...         │ 0.25  │  ⚠   │
  └──────────────────────────────────────────┴───────┴──────┘
  ⚠ 3 of 5 chunks scored below 0.5 — low-relevance padding.
    Consider reducing k or raising min_score threshold.
 
- Generation                                               2,341ms
- Prompt tokens: 847  │  Response tokens: 124  │  Model: llama3.2
+ Generation                                                 200ms
+ Prompt tokens: 87  │  Response tokens: 92  │  Model: llama3.2
 
- ⚠ Response is most similar to chunk #2, not chunk #1.
-   Possible ranking issue. Consider reranking before generation.
+ ✓ Generation looks healthy — no obvious issues detected.
 
- Total latency: 2,469ms
+ Total latency: 280ms
 ──────────────────────────────────────────────────────────────────
 ```
 
