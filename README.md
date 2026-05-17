@@ -49,25 +49,28 @@ Most RAG debugging looks like this: print retrieved chunks to stdout, read them 
 
 ## Install
 
+This project is not yet published to PyPI. Install from source (recommended):
+
 ```bash
-pip install ragtrace
+git clone https://github.com/meutsabdahal/ragtrace
+cd ragtrace
+# Recommended: use the uv-native workflow (creates environment and installs dev deps)
+uv sync --group dev
+# Run tests or examples via uv
+uv run pytest tests/ -v
+```
+
+Alternatively, install into a virtual environment with pip:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
 Requires Python 3.10+.
 
-Semantic analysis dependencies are optional to keep the base install lightweight:
-
-```bash
-pip install "ragtrace[semantic]"
-```
-
-On first semantic run, `ragtrace` downloads a small embedding model (~80MB). One-time download.
-
-Example dependencies are also optional:
-
-```bash
-pip install "ragtrace[examples]"
-```
+On first semantic run, `ragtrace` may download a small embedding model (~80MB). This is a one-time download.
 
 ---
 
